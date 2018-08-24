@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
@@ -22,12 +22,12 @@ namespace FaceDemo
 {
     public partial class Main : Form
     {
-        private const string AppId = "";
-        private const string FtKey = "";
-        private const string FdKey = "";
-        private const string FrKey = "";
-        private const string AgeKey = "";
-        private const string GenderKey = "";
+        private const string AppId = "EAxDtJ65pX6aax2WUahE9dZySVfG1wRMEqiikpQxoXSz";
+        private const string FtKey = "C84c1aUXsxDswF8x2kMi6WoXVhqeqRNz2eVDLGpUzWc5";
+        private const string FdKey = "C84c1aUXsxDswF8x2kMi6Woef76ptE67Sqj9LD7syuTD";
+        private const string FrKey = "C84c1aUXsxDswF8x2kMi6Wp9Ji9XqsEPhv1WASubZ8q4";
+        private const string AgeKey = "C84c1aUXsxDswF8x2kMi6WpPdWfsk1gST1qBh6i6doNN";
+        private const string GenderKey = "C84c1aUXsxDswF8x2kMi6WpWnuw3juNTM94LbnXukK94";
 
         private const string FaceLibraryPath = "faces";
 
@@ -102,11 +102,12 @@ namespace FaceDemo
             var setting =
                 new ConvertSettings
                 {
-                    CustomOutputArgs = "-an -r 15 -pix_fmt bgr24 -updatefirst 1" //根据业务需求-r参数可以调整，取决于摄像机的FPS
-                }; //-s 1920x1080 -q:v 2 -b:v 64k
+                    CustomOutputArgs = "-s 1920x1080", //根据业务需求-r参数可以调整，取决于摄像机的FPS
 
-            task = ffmpeg.ConvertLiveMedia("rtsp://user:password@192.168.1.64:554/h264/ch1/main/av_stream", null,
-                outputStream, Format.raw_video, setting);
+                }; //-s 1920x1080 -q:v 2 -b:v 64k
+                   //-an -r 15 -pix_fmt bgr24 -updatefirst 1
+                   //task = ffmpeg.ConvertLiveMedia("rtsp://user:password@192.168.1.64:554/h264/ch1/main/av_stream", null,
+                   //    outputStream, Format.raw_video, setting);
 
             /*
              * USB摄像头捕获
@@ -115,8 +116,8 @@ namespace FaceDemo
              * 然后根据捕获的分辨率，修改视频图形信息，包括width和height，一般像素大小不用修改，如果要参考设备支持的分辨率，可以使用：
              * ffmpeg -list_options true -f dshow -i video="USB2.0 PC CAMERA"命令
              */
-            //task = ffmpeg.ConvertLiveMedia("video=USB2.0 PC CAMERA", "dshow",
-            //    outputStream, Format.raw_video, setting);
+            task = ffmpeg.ConvertLiveMedia("video=Logitech HD Webcam C270", "dshow",
+                 outputStream, Format.raw_video, setting);
 
             task.OutputDataReceived += DataReceived;
             task.Start();
@@ -138,14 +139,14 @@ namespace FaceDemo
                 }
         }
 
+        Bitmap image;
+
         private void Render()
         {
             while (_renderRunning)
             {
                 if (_image == null)
                     continue;
-
-                Bitmap image;
 
                 lock (_imageLock)
                 {
@@ -169,8 +170,8 @@ namespace FaceDemo
 
         private void Verify(Bitmap bitmap)
         {
-            var features = _processor.LocateExtract(bitmap);
-            //var features = _processor.LocateExtract(bitmap, LocateOperation.IncludeAge | LocateOperation.IncludeGender); //采用此方式抽取的特征，将包含性别和年龄信息
+            //var features = _processor.LocateExtract(bitmap);
+            var features = _processor.LocateExtract(bitmap, LocateOperation.IncludeAge | LocateOperation.IncludeGender); //采用此方式抽取的特征，将包含性别和年龄信息
             if (features != null)
             {
                 var names = MatchAll(features);
@@ -180,9 +181,17 @@ namespace FaceDemo
                 {
                     foreach (var feature in features)
                     {
-                        g.DrawRectangle(new Pen(Color.Crimson, 2), feature.FaceLoaction);
-                        g.DrawString(names[index], new Font(new FontFamily("SimSun"), 12),
-                            new SolidBrush(Color.Crimson), feature.FaceLoaction.Right, feature.FaceLoaction.Bottom);
+                        g.DrawRectangle(new Pen(Color.Crimson, 2), feature.FaceLocation);
+                        var sexText = "未知";
+                        if (feature.Gender == 0)
+                            sexText = "男";
+
+                        if (feature.Gender == 1)
+                            sexText = "女";
+
+                        var text = $"姓名:{names[index]}  年龄:{feature.Age}  性别:{sexText}";
+                        g.DrawString(text, new Font(new FontFamily("SimSun"), 16),
+                            new SolidBrush(Color.White), feature.FaceLocation.Left, feature.FaceLocation.Top);
 
                         feature.Dispose(); //feature中的特征数据从托管内存复制到非托管，必须释放，否则内存泄露
 
